@@ -49,6 +49,7 @@ public class CreateView extends JPanel implements ActionListener {
 		//
 		// feel free to use my layout in LoginView as an example for laying out and
 		// positioning your components.
+		
 	}
 	
 	/*
