@@ -13,8 +13,10 @@ import java.io.File;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.security.InvalidParameterException;
+import java.sql.SQLException;
 
 import controller.ViewManager;
+import data.Database;
 import model.BankAccount;
 import model.User;
 
@@ -40,15 +42,6 @@ public class CreateView extends JPanel implements ActionListener {
 	private JButton cancelButton;
 	private JLabel errorMessageLabel;
 	
-	private String firstName;
-	private String lastName;
-	private int dob;
-	private long phone;
-	String streetAddress;
-	String city;
-	String state;
-	String postalCode;
-	int pin;
 	
 	private BankAccount account;
 	private User user;
@@ -301,6 +294,7 @@ public class CreateView extends JPanel implements ActionListener {
 		postalField.setBounds(160, 290, 100, 35);
 		
 		limitSize(postalField, 5);
+		//limitToIntegers(postalField);
 		
 		this.add(postalLabel);
 		this.add(postalField);
@@ -352,7 +346,6 @@ public class CreateView extends JPanel implements ActionListener {
 	private void initCancelButton() {
 		cancelButton = new JButton("Cancel");
 		cancelButton.setBounds(50, 390, 120, 40);
-		clearFields(cancelButton);
 		
 		cancelButton.addActionListener(this);
 		this.add(cancelButton);
@@ -362,7 +355,6 @@ public class CreateView extends JPanel implements ActionListener {
 		
 		finalCreateButton = new JButton("Create Account");
 		finalCreateButton.setBounds(180, 390, 200, 40);
-		clearFields(finalCreateButton);
 		finalCreateButton.addActionListener(this);
 		
 		this.add(finalCreateButton);
@@ -371,39 +363,18 @@ public class CreateView extends JPanel implements ActionListener {
 	private void initPowerButton() {
 		powerButton = new JButton();
 		powerButton.setBounds(420, 5, 50, 50);
-		clearFields(powerButton);
 		powerButton.addActionListener(this);
 		
 		try {
 			Image image = ImageIO.read(new File("images/power-off.png"));
 			powerButton.setIcon(new ImageIcon(image));
-		} catch (Exception e) {
+		} catch (Exception e1) {
 			powerButton.setText("OFF");
 		}
 		
 		this.add(powerButton);
 	}
 	
-	public void clearFields(JButton button) {
-		button.addActionListener(new ActionListener(){
-		    public void actionPerformed(ActionEvent e){
-		        firstNameField.setText("");
-		        lastNameField.setText("");
-		        monthField.setSelectedIndex(0);
-		        dayField.setSelectedIndex(0);
-		        yearField.setSelectedIndex(0);
-		        phoneNumber1Field.setText("");
-		        phoneNumber2Field.setText("");
-		        phoneNumber3Field.setText("");
-		        streetAddressField.setText("");
-		        cityField.setText("");
-		        stateField.setSelectedIndex(0);
-		        postalField.setText("");
-		        pinField.setText("");
-		        //textfield.setText(null); //or use this
-		    }
-		});
-	}
 	public void limitToIntegers(JTextField keyText) {
 		keyText.addKeyListener(new KeyAdapter() {
 		    public void keyTyped(KeyEvent e) {
@@ -427,39 +398,58 @@ public class CreateView extends JPanel implements ActionListener {
 	}
 	
 	@SuppressWarnings("deprecation")
-	private void setValues() throws NumberFormatException {
+	private void setValues() throws NumberFormatException, SQLException {
 		
-		this.pin = Integer.valueOf(pinField.getText());
-		if (String.valueOf(this.pin).length() != 4) {
-			throw new InvalidParameterException("Enter a valid PIN");
+		int pin = Integer.valueOf(pinField.getText());
+		if (String.valueOf(pin).length() != 4) {
+			throw new InvalidParameterException("Please enter a 4 digit PIN");
 		}
 		
-		String month = monthField.getSelectedItem().toString();
-		String day = dayField.getSelectedItem().toString();
-		String year = yearField.getSelectedItem().toString();
-		this.dob = Integer.valueOf(month + day + year);
+		String month = monthField.getSelectedItem() + "";
+		String day = dayField.getSelectedItem() + "";
+		String year = yearField.getSelectedItem() + "";
+		int dob = Integer.valueOf(month + day + year);
 		
 		String phoneNumber1 = phoneNumber1Field.getText();
 		String phoneNumber2 = phoneNumber2Field.getText();
 		String phoneNumber3 = phoneNumber3Field.getText();
-		this.phone = Long.valueOf(phoneNumber1 + phoneNumber2 + phoneNumber3);
+		long phone = Long.valueOf(phoneNumber1 + phoneNumber2 + phoneNumber3);
 		
-		if (String.valueOf(this.phone).length() != 10) {
-			throw new InvalidParameterException("Enter a valid Phone Number");
+		if (String.valueOf(phone).length() != 10) {
+			throw new InvalidParameterException("Please enter a valid Phone Number");
 		}
 		
-		this.firstName = firstNameField.getText();
-		this.lastName = lastNameField.getText();
+		String firstName = firstNameField.getText();
+		String lastName = lastNameField.getText();
 		
-		this.streetAddress = streetAddressField.getText();
-		this.city = cityField.getText();
-		this.state = stateField.getSelectedItem().toString();
-		this.postalCode = postalField.getText();
+		String streetAddress = streetAddressField.getText();
+		String city = cityField.getText();
+		String state = stateField.getSelectedItem() + "";
+		String postalCode = postalField.getText();
 		
-		this.user = new User(this.pin, this.dob, this.phone, this.firstName, this.lastName, this.streetAddress,
-				this.city, this.state, this.postalCode);
+		if (postalCode.length() != 5) {
+			throw new InvalidParameterException("Please enter a valid ZIP Code");
+		}
 		
-		this.account.setUser(this.user);
+		if (firstName.length() == 0|| lastName.length() == 0 || streetAddress.length() == 0 || city.length() == 0) {
+			throw new InvalidParameterException("Please complete all fields");
+		}
+		
+		user = new User(pin, dob, phone, firstName, 
+				lastName, streetAddress,
+				city, state, postalCode);
+		
+		long accountNumber = manager.getDatabase().getMaxAccountNumber() + 1;
+		
+		if (accountNumber == -1) {
+			throw new InvalidParameterException("Error retreiving Account Number");
+		}
+		account = new BankAccount('Y', accountNumber, 0.0, user);
+		manager.setAccount(account); 
+		manager.getAccount().setUser(user);
+		manager.getDatabase().insertAccount(account);
+		
+			
 		// creates constructor for the account 
 		
 	}
@@ -470,21 +460,35 @@ public class CreateView extends JPanel implements ActionListener {
 		if (source.equals(finalCreateButton)) {
 			try {
 				setValues();
-				manager.createAccount();
-				manager.switchTo(ATM.HOME_VIEW);
+				manager.login(manager.getAccount().getAccountNumber() + "",
+						String.valueOf(manager.getAccount().getUser().getPin()).toCharArray());
+				this.removeAll();
+				this.initialize();
+				updateErrorMessage("");
 			}
 			catch (NumberFormatException e2){
-				updateErrorMessage("ERROR");
+				updateErrorMessage("Please complete all fields");
 			}
 			catch(InvalidParameterException e3) {
 				updateErrorMessage(e3.getMessage());
 			}
+			catch(NullPointerException e4) {
+				updateErrorMessage("Null Pointer");
+			}
+			catch (SQLException e5) {
+				updateErrorMessage("SQL Exception");
+			}
 		} else if (source.equals(cancelButton)) {
+			
 			manager.switchTo(ATM.LOGIN_VIEW);
+			this.removeAll();
+			this.initialize();
+			
+			updateErrorMessage("");
 		} else if (source.equals(powerButton)) {
 			manager.shutdown();
 		} else {
-			System.err.println("ERROR: Action command not found (" + e.getActionCommand() + ")");
+			System.err.println("ERROR: command not found (" + e.getActionCommand() + ")");
 		}
 		
 	}
