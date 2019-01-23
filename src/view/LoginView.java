@@ -2,12 +2,9 @@ package view;
 
 import java.awt.Color;
 import java.awt.Font;
-import java.awt.Graphics2D;
 import java.awt.Image;
-import java.awt.RenderingHints;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
@@ -66,7 +63,7 @@ public class LoginView extends JPanel implements ActionListener {
 	 * Initializes the LoginView components.
 	 */
 	
-	private void initialize() {
+	public void initialize() {
 		this.setLayout(null);
 		
 		initAccountField();
@@ -155,7 +152,7 @@ public class LoginView extends JPanel implements ActionListener {
 	
 	private void initPowerButton() {
 		powerButton = new JButton();
-		powerButton.setBounds(5, 5, 50, 50);
+		powerButton.setBounds(420, 5, 50, 50);
 		powerButton.addActionListener(this);
 		
 		try {
@@ -193,8 +190,12 @@ public class LoginView extends JPanel implements ActionListener {
 		
 		if (source.equals(loginButton)) {
 			manager.login(accountField.getText(), pinField.getPassword());
+			
 		} else if (source.equals(createButton)) {
 			manager.switchTo(ATM.CREATE_VIEW);
+			removeAll();
+			initialize();
+			updateErrorMessage("");
 		} else if (source.equals(powerButton)) {
 			manager.shutdown();
 		} else {
